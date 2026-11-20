@@ -1,0 +1,37 @@
+name: Build MacLite ISO
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Libera spazio sul runner
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache
+          df -h /
+
+      - name: Costruisci l'ISO dentro un container Debian 12
+        run: |
+          docker run --rm --privileged -v "$PWD":/work -w /work debian:bookworm \
+            bash -c "apt-get update && apt-get install -y ca-certificates && bash build-iso.sh"
+
+      - name: Carica l'ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: maclite-i386-iso
+          path: maclite-i386.iso
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Carica il log in caso di errore
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: maclite-build/build.log
+          if-no-files-found: ignore
